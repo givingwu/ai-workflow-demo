@@ -1,0 +1,56 @@
+name: Feature
+description: 提交一个 AI 可执行的功能任务
+title: "[Feature]: "
+labels:
+  - feature
+  - needs-triage
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: 为什么要做这个功能？
+      placeholder: 描述业务背景或问题来源。
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目标
+      description: 这个任务完成后应该达到什么结果？
+    validations:
+      required: true
+  - type: textarea
+    id: non-goals
+    attributes:
+      label: 不做什么
+      description: 明确边界，避免 AI 或开发扩大范围。
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 使用 checklist 描述可验证结果。
+      value: |
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: 影响范围
+      description: 相关模块、文件、API、数据结构或文档。
+    validations:
+      required: true
+  - type: dropdown
+    id: ai-level
+    attributes:
+      label: AI 可执行等级
+      options:
+        - assist
+        - auto-branch
+        - auto-pr
+        - human-only
+    validations:
+      required: true

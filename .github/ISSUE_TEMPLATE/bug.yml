@@ -1,0 +1,46 @@
+name: Bug
+description: 提交一个可复现的问题
+title: "[Bug]: "
+labels:
+  - bug
+  - needs-triage
+body:
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际表现
+      description: 当前发生了什么？
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期表现
+      description: 你期望发生什么？
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 日志 / 截图 / 其他证据
+      description: 粘贴错误日志、截图链接或相关上下文。
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 修复验收标准
+      value: |
+        - [ ] 
+    validations:
+      required: true

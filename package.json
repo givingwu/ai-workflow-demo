@@ -1,0 +1,16 @@
+{
+  "name": "ai-workflow-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "单人 GitHub 工作流与 AI 辅助研发闭环示例项目。",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "syntax": "node --check src/server.js && node --check src/task-store.js && node --check scripts/check-issue-readiness.mjs && node --check scripts/generate-review-report.mjs && node --check tests/server.test.js && node --check tests/task-store.test.js",
+    "test": "node --test",
+    "check": "npm run syntax && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

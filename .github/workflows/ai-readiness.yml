@@ -1,0 +1,30 @@
+name: AI Readiness
+
+on:
+  issues:
+    types:
+      - opened
+      - edited
+      - reopened
+      - labeled
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  readiness:
+    if: github.event.issue.pull_request == null
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate readiness report
+        run: node scripts/check-issue-readiness.mjs "$GITHUB_EVENT_PATH" > readiness-report.md
+
+      - name: Comment on issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: gh issue comment "$ISSUE_NUMBER" --body-file readiness-report.md

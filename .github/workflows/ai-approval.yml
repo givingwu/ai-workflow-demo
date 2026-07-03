@@ -37,10 +37,19 @@ jobs:
           DESIGN_FILE: ${{ steps.approval.outputs.design_file }}
           COMMIT_MESSAGE: ${{ steps.approval.outputs.commit_message }}
         run: |
-          git checkout -b "$BRANCH"
+          REMOTE_SHA="$(git ls-remote --heads origin "$BRANCH" | awk '{print $1}')"
+          git checkout -B "$BRANCH"
           git add "$DESIGN_FILE"
-          git commit -m "$COMMIT_MESSAGE"
-          git push -u origin "$BRANCH"
+          if git diff --cached --quiet; then
+            echo "No design changes to commit"
+          else
+            git commit -m "$COMMIT_MESSAGE"
+          fi
+          if [ -n "$REMOTE_SHA" ]; then
+            git push --force-with-lease="refs/heads/$BRANCH:$REMOTE_SHA" -u origin "$BRANCH"
+          else
+            git push -u origin "$BRANCH"
+          fi
 
       - name: Create pull request
         if: steps.approval.outputs.approved == 'true'
@@ -51,5 +60,19 @@ jobs:
           PR_TITLE: ${{ steps.approval.outputs.pr_title }}
           PR_BODY_FILE: ${{ steps.approval.outputs.pr_body_file }}
         run: |
-          PR_URL="$(gh pr create --base main --head "$BRANCH" --title "$PR_TITLE" --body-file "$PR_BODY_FILE")"
+          PR_URL="$(gh pr view "$BRANCH" --json url --jq .url 2>/dev/null || true)"
+          if [ -z "$PR_URL" ]; then
+            set +e
+            PR_CREATE_OUTPUT="$(gh pr create --base main --head "$BRANCH" --title "$PR_TITLE" --body-file "$PR_BODY_FILE" 2>&1)"
+            PR_CREATE_STATUS=$?
+            set -e
+
+            if [ "$PR_CREATE_STATUS" -ne 0 ]; then
+              echo "$PR_CREATE_OUTPUT"
+              gh issue comment "$ISSUE_NUMBER" --body "AI Approval Gateway 已创建分支 \`$BRANCH\`，但无法创建 PR。请在仓库 Settings → Actions → General → Workflow permissions 中启用 Read and write permissions，并勾选 Allow GitHub Actions to create and approve pull requests；或者配置具备 contents/issues/pull-requests write 权限的 \`AI_WORKFLOW_TOKEN\` secret。"
+              exit "$PR_CREATE_STATUS"
+            fi
+
+            PR_URL="$PR_CREATE_OUTPUT"
+          fi
           gh issue comment "$ISSUE_NUMBER" --body "AI Approval Gateway 已创建设计 PR：$PR_URL"

@@ -102,6 +102,15 @@ Issue 评论 /ai approve
 - 默认使用 `GITHUB_TOKEN`。如果希望 AI 创建的分支 / PR 继续触发更多 workflow，可以配置 `AI_WORKFLOW_TOKEN` secret，并授予最小必要权限。
 - 当前 Gateway 只生成设计 PR，不直接修改业务代码或发布。
 
+启用 PR 创建能力：
+
+1. 进入仓库 `Settings` → `Actions` → `General`。
+2. 在 `Workflow permissions` 中选择 `Read and write permissions`。
+3. 勾选 `Allow GitHub Actions to create and approve pull requests`。
+4. 保存后重新评论 `/ai approve`，或重新运行失败的 `AI Approval Gateway` workflow。
+
+如果不想放开默认 `GITHUB_TOKEN` 的 PR 创建能力，可以创建 `AI_WORKFLOW_TOKEN` secret。该 token 至少需要当前仓库的 `contents: write`、`issues: write` 和 `pull-requests: write` 权限。
+
 ## 目录结构
 
 ```text

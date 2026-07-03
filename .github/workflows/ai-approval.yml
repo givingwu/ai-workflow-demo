@@ -1,0 +1,55 @@
+name: AI Approval Gateway
+
+on:
+  issue_comment:
+    types:
+      - created
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  approve:
+    if: github.event.issue.pull_request == null && startsWith(github.event.comment.body, '/ai approve')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.AI_WORKFLOW_TOKEN || github.token }}
+
+      - name: Prepare approval artifacts
+        id: approval
+        run: node scripts/handle-approval.mjs "$GITHUB_EVENT_PATH"
+
+      - name: Configure Git
+        if: steps.approval.outputs.approved == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create design branch
+        if: steps.approval.outputs.approved == 'true'
+        env:
+          BRANCH: ${{ steps.approval.outputs.branch }}
+          DESIGN_FILE: ${{ steps.approval.outputs.design_file }}
+          COMMIT_MESSAGE: ${{ steps.approval.outputs.commit_message }}
+        run: |
+          git checkout -b "$BRANCH"
+          git add "$DESIGN_FILE"
+          git commit -m "$COMMIT_MESSAGE"
+          git push -u origin "$BRANCH"
+
+      - name: Create pull request
+        if: steps.approval.outputs.approved == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AI_WORKFLOW_TOKEN || github.token }}
+          BRANCH: ${{ steps.approval.outputs.branch }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+          PR_TITLE: ${{ steps.approval.outputs.pr_title }}
+          PR_BODY_FILE: ${{ steps.approval.outputs.pr_body_file }}
+        run: |
+          PR_URL="$(gh pr create --base main --head "$BRANCH" --title "$PR_TITLE" --body-file "$PR_BODY_FILE")"
+          gh issue comment "$ISSUE_NUMBER" --body "AI Approval Gateway 已创建设计 PR：$PR_URL"

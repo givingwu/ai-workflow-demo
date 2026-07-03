@@ -94,13 +94,18 @@ Issue 评论 /ai approve
 → 创建 ai/issue-* 分支
 → 创建设计 PR
 → 回写 Issue 评论
+→ 设计 PR 合并后回写 /ai implement 提示
+→ Issue 评论 /ai implement
+→ 生成 docs/implementation/ISSUE-*.md、src/generated/* 和 tests/generated/*
+→ 创建 ai/implement-issue-* 分支
+→ 创建实现 PR
 ```
 
 安全边界：
 
 - 只有 `OWNER`、`MEMBER`、`COLLABORATOR` 的评论可以触发 approve。
 - 默认使用 `GITHUB_TOKEN`。如果希望 AI 创建的分支 / PR 继续触发更多 workflow，可以配置 `AI_WORKFLOW_TOKEN` secret，并授予最小必要权限。
-- 当前 Gateway 只生成设计 PR，不直接修改业务代码或发布。
+- 当前 Gateway 会创建设计 PR 和实现 PR，但不会自动合并或发布。
 
 启用 PR 创建能力：
 
@@ -120,6 +125,7 @@ Issue 评论 /ai approve
 docs/
   adr/
   design/
+  implementation/
   prd/
   release/
 scripts/

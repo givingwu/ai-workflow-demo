@@ -1,0 +1,80 @@
+name: AI Implementation Gateway
+
+on:
+  issue_comment:
+    types:
+      - created
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  implement:
+    if: github.event.issue.pull_request == null && startsWith(github.event.comment.body, '/ai implement')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.AI_WORKFLOW_TOKEN || github.token }}
+
+      - name: Prepare implementation artifacts
+        id: implementation
+        run: node scripts/handle-implementation.mjs "$GITHUB_EVENT_PATH"
+
+      - name: Configure Git
+        if: steps.implementation.outputs.implemented == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create implementation branch
+        if: steps.implementation.outputs.implemented == 'true'
+        env:
+          BRANCH: ${{ steps.implementation.outputs.branch }}
+          IMPLEMENTATION_FILE: ${{ steps.implementation.outputs.implementation_file }}
+          SOURCE_FILE: ${{ steps.implementation.outputs.source_file }}
+          TEST_FILE: ${{ steps.implementation.outputs.test_file }}
+          COMMIT_MESSAGE: ${{ steps.implementation.outputs.commit_message }}
+        run: |
+          REMOTE_SHA="$(git ls-remote --heads origin "$BRANCH" | awk '{print $1}')"
+          git checkout -B "$BRANCH"
+          git add "$IMPLEMENTATION_FILE" "$SOURCE_FILE" "$TEST_FILE"
+          if git diff --cached --quiet; then
+            echo "No implementation changes to commit"
+          else
+            git commit -m "$COMMIT_MESSAGE"
+          fi
+          if [ -n "$REMOTE_SHA" ]; then
+            git push --force-with-lease="refs/heads/$BRANCH:$REMOTE_SHA" -u origin "$BRANCH"
+          else
+            git push -u origin "$BRANCH"
+          fi
+
+      - name: Create pull request
+        if: steps.implementation.outputs.implemented == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AI_WORKFLOW_TOKEN || github.token }}
+          BRANCH: ${{ steps.implementation.outputs.branch }}
+          ISSUE_NUMBER: ${{ steps.implementation.outputs.issue_number }}
+          PR_TITLE: ${{ steps.implementation.outputs.pr_title }}
+          PR_BODY_FILE: ${{ steps.implementation.outputs.pr_body_file }}
+        run: |
+          PR_URL="$(gh pr view "$BRANCH" --json url --jq .url 2>/dev/null || true)"
+          if [ -z "$PR_URL" ]; then
+            set +e
+            PR_CREATE_OUTPUT="$(gh pr create --base main --head "$BRANCH" --title "$PR_TITLE" --body-file "$PR_BODY_FILE" 2>&1)"
+            PR_CREATE_STATUS=$?
+            set -e
+
+            if [ "$PR_CREATE_STATUS" -ne 0 ]; then
+              echo "$PR_CREATE_OUTPUT"
+              gh issue comment "$ISSUE_NUMBER" --body "AI Implementation Gateway 已创建分支 \`$BRANCH\`，但无法创建 PR。请在仓库 Settings → Actions → General → Workflow permissions 中启用 Read and write permissions，并勾选 Allow GitHub Actions to create and approve pull requests；或者配置具备 contents/issues/pull-requests write 权限的 \`AI_WORKFLOW_TOKEN\` secret。"
+              exit "$PR_CREATE_STATUS"
+            fi
+
+            PR_URL="$PR_CREATE_OUTPUT"
+          fi
+          gh issue comment "$ISSUE_NUMBER" --body "AI Implementation Gateway 已创建实现 PR：$PR_URL"

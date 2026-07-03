@@ -107,7 +107,7 @@ Issue 评论 /ai approve
 1. 进入仓库 `Settings` → `Actions` → `General`。
 2. 在 `Workflow permissions` 中选择 `Read and write permissions`。
 3. 勾选 `Allow GitHub Actions to create and approve pull requests`。
-4. 保存后重新评论 `/ai approve`，或重新运行失败的 `AI Approval Gateway` workflow。
+4. 保存后重新评论 `/ai approve`，触发最新版本的 `AI Approval Gateway` workflow。
 
 如果不想放开默认 `GITHUB_TOKEN` 的 PR 创建能力，可以创建 `AI_WORKFLOW_TOKEN` secret。该 token 至少需要当前仓库的 `contents: write`、`issues: write` 和 `pull-requests: write` 权限。
 

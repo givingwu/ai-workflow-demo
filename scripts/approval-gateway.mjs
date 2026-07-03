@@ -4,7 +4,11 @@ import path from "node:path";
 const APPROVAL_COMMAND = /^\/ai approve(?:\s|$)/i;
 const ALLOWED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 
-export async function createApprovalArtifacts({ event, workspace = process.cwd() }) {
+export async function createApprovalArtifacts({
+  event,
+  workspace = process.cwd(),
+  tempDir = process.env.RUNNER_TEMP ?? path.join(workspace, ".tmp")
+}) {
   if (event.issue?.pull_request) {
     return {
       approved: false,
@@ -31,7 +35,6 @@ export async function createApprovalArtifacts({ event, workspace = process.cwd()
   const branch = `ai/issue-${issueNumber}-${commentId}`;
   const slug = slugify(issueTitle, `issue-${issueNumber}`);
   const designFile = `docs/design/ISSUE-${issueNumber}-${slug}.md`;
-  const tempDir = process.env.RUNNER_TEMP ?? path.join(workspace, ".tmp");
   const prBodyFile = path.join(tempDir, `issue-${issueNumber}-pr-body.md`);
   const designPath = path.join(workspace, designFile);
 

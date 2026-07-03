@@ -10,9 +10,11 @@ test("owner 回复 /ai approve 时生成设计文档和 PR 元数据", async () 
   const workspace = await mkdtemp(path.join(tmpdir(), "ai-approval-"));
 
   try {
+    const tempDir = path.join(workspace, ".tmp");
     const result = await createApprovalArtifacts({
       event: createIssueCommentEvent(),
-      workspace
+      workspace,
+      tempDir
     });
 
     assert.equal(result.approved, true);

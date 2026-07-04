@@ -73,6 +73,8 @@ test("owner 回复 /ai implement 时生成实现分支文件和 PR 元数据", a
     assert.equal(result.testFile, "tests/generated/issue-1-implementation.test.js");
     assert.equal(result.commitMessage, "feat: implement issue #1 workflow scaffold");
     assert.equal(result.prTitle, "[ai] Implement #1 Feature demo");
+    assert.equal(result.aiExecutionLevel, "auto-pr");
+    assert.equal(result.createPullRequest, true);
 
     const implementation = await readFile(path.join(workspace, result.implementationFile), "utf8");
     assert.match(implementation, /设计文档：docs\/design\/ISSUE-1-feature-demo.md/);
@@ -92,6 +94,53 @@ test("owner 回复 /ai implement 时生成实现分支文件和 PR 元数据", a
     await rm(workspace, { recursive: true, force: true });
   }
 });
+
+test("AI 可执行等级为 auto-branch 时只允许生成实现分支", async () => {
+  const workspace = await mkdtemp(path.join(tmpdir(), "ai-implementation-"));
+
+  try {
+    const tempDir = path.join(workspace, ".tmp");
+    await mkdir(path.join(workspace, "docs/design"), { recursive: true });
+    await writeFile(
+      path.join(workspace, "docs/design/ISSUE-1-feature-demo.md"),
+      "# ISSUE-1: Feature demo\n",
+      "utf8"
+    );
+
+    const result = await createImplementationArtifacts({
+      event: createIssueCommentEvent({ aiLevel: "auto-branch" }),
+      workspace,
+      tempDir
+    });
+
+    assert.equal(result.implemented, true);
+    assert.equal(result.aiExecutionLevel, "auto-branch");
+    assert.equal(result.createPullRequest, false);
+    assert.equal(result.branch, "ai/implement-issue-1-98765");
+    assert.equal(result.implementationFile, "docs/implementation/ISSUE-1-feature-demo.md");
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
+for (const aiLevel of ["assist", "human-only"]) {
+  test(`AI 可执行等级为 ${aiLevel} 时拒绝 implement 自动化`, async () => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "ai-implementation-"));
+
+    try {
+      const result = await createImplementationArtifacts({
+        event: createIssueCommentEvent({ aiLevel }),
+        workspace
+      });
+
+      assert.equal(result.implemented, false);
+      assert.equal(result.aiExecutionLevel, aiLevel);
+      assert.match(result.reason, new RegExp(aiLevel));
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+}
 
 test("非 implement 评论不会生成实现产物", async () => {
   const workspace = await mkdtemp(path.join(tmpdir(), "ai-implementation-"));
@@ -170,7 +219,7 @@ function createIssueCommentEvent(options = {}) {
         "",
         "### AI 可执行等级",
         "",
-        "auto-pr"
+        options.aiLevel ?? "auto-pr"
       ].join("\n"),
       pull_request: options.pullRequest
     },

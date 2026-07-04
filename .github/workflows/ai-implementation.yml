@@ -24,6 +24,15 @@ jobs:
         id: implementation
         run: node scripts/handle-implementation.mjs "$GITHUB_EVENT_PATH"
 
+      - name: Comment implementation skipped
+        if: steps.implementation.outputs.implemented != 'true' && steps.implementation.outputs.reason != ''
+        env:
+          GH_TOKEN: ${{ secrets.AI_WORKFLOW_TOKEN || github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REASON: ${{ steps.implementation.outputs.reason }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "AI Implementation Gateway 未执行：$REASON"
+
       - name: Configure Git
         if: steps.implementation.outputs.implemented == 'true'
         run: |
@@ -53,8 +62,18 @@ jobs:
             git push -u origin "$BRANCH"
           fi
 
+      - name: Comment implementation branch
+        if: steps.implementation.outputs.implemented == 'true' && steps.implementation.outputs.create_pr != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AI_WORKFLOW_TOKEN || github.token }}
+          ISSUE_NUMBER: ${{ steps.implementation.outputs.issue_number }}
+          BRANCH: ${{ steps.implementation.outputs.branch }}
+          AI_EXECUTION_LEVEL: ${{ steps.implementation.outputs.ai_execution_level }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "AI Implementation Gateway 已创建实现分支 \`$BRANCH\`。当前 AI 可执行等级为 \`$AI_EXECUTION_LEVEL\`，不会自动创建 PR。"
+
       - name: Create pull request
-        if: steps.implementation.outputs.implemented == 'true'
+        if: steps.implementation.outputs.implemented == 'true' && steps.implementation.outputs.create_pr == 'true'
         env:
           GH_TOKEN: ${{ secrets.AI_WORKFLOW_TOKEN || github.token }}
           BRANCH: ${{ steps.implementation.outputs.branch }}

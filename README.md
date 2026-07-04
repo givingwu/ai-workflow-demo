@@ -107,6 +107,23 @@ Issue 评论 /ai approve
 - 默认使用 `GITHUB_TOKEN`。如果希望 AI 创建的分支 / PR 继续触发更多 workflow，可以配置 `AI_WORKFLOW_TOKEN` secret，并授予最小必要权限。
 - 当前 Gateway 会创建设计 PR 和实现 PR，但不会自动合并或发布。
 
+### AI 可执行等级
+
+Issue 模板里的 `AI 可执行等级` 是自动化权限合同：
+
+| 等级 | 允许的自动化行为 |
+| --- | --- |
+| `human-only` | 只能人工处理，`/ai approve` 和 `/ai implement` 会被拒绝。 |
+| `assist` | 只允许 AI 输出建议，不允许创建分支或 PR。 |
+| `auto-branch` | 允许 AI 创建 `ai/*` 分支并提交产物，但不会自动创建 PR。 |
+| `auto-pr` | 允许 AI 创建 `ai/*` 分支、提交产物并创建 PR。 |
+
+当前 Gateway 会在收到命令后读取该等级：
+
+- `human-only` / `assist`：回写 Issue 评论说明未执行原因。
+- `auto-branch`：推送分支并回写分支名。
+- `auto-pr`：推送分支并创建设计 PR 或实现 PR。
+
 启用 PR 创建能力：
 
 1. 进入仓库 `Settings` → `Actions` → `General`。

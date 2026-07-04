@@ -1,6 +1,8 @@
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { resolveAiExecutionPolicy } from "./ai-execution-policy.mjs";
+
 const IMPLEMENT_COMMAND = /^\/ai implement(?:\s|$)/i;
 const ALLOWED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 
@@ -32,6 +34,19 @@ export async function createImplementationArtifacts({
   const issueNumber = String(event.issue.number);
   const issueTitle = normalizeTitle(event.issue.title);
   const commentId = String(event.comment.id);
+  const sections = parseIssueSections(event.issue.body ?? "");
+  const aiExecutionPolicy = resolveAiExecutionPolicy(sections);
+
+  if (!aiExecutionPolicy.canCreateBranch) {
+    return {
+      implemented: false,
+      issueNumber,
+      aiExecutionLevel: aiExecutionPolicy.aiExecutionLevel,
+      createPullRequest: false,
+      reason: aiExecutionPolicy.blockedReason
+    };
+  }
+
   const slug = slugify(issueTitle, `issue-${issueNumber}`);
   const designFile = await findDesignFile({ workspace, issueNumber });
   const implementationFile = `docs/implementation/ISSUE-${issueNumber}-${slug}.md`;
@@ -39,7 +54,6 @@ export async function createImplementationArtifacts({
   const testFile = `tests/generated/issue-${issueNumber}-implementation.test.js`;
   const prBodyFile = path.join(tempDir, `issue-${issueNumber}-implementation-pr-body.md`);
   const branch = `ai/implement-issue-${issueNumber}-${commentId}`;
-  const sections = parseIssueSections(event.issue.body ?? "");
   const acceptanceCriteria = parseChecklist(sectionOrFallback(sections, "验收标准"));
 
   await mkdir(path.dirname(path.join(workspace, implementationFile)), { recursive: true });
@@ -99,6 +113,8 @@ export async function createImplementationArtifacts({
   return {
     implemented: true,
     issueNumber,
+    aiExecutionLevel: aiExecutionPolicy.aiExecutionLevel,
+    createPullRequest: aiExecutionPolicy.canCreatePullRequest,
     branch,
     designFile,
     implementationFile,

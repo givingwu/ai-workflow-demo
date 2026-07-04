@@ -1,6 +1,8 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { resolveAiExecutionPolicy } from "./ai-execution-policy.mjs";
+
 const APPROVAL_COMMAND = /^\/ai approve(?:\s|$)/i;
 const ALLOWED_ASSOCIATIONS = new Set(["OWNER", "MEMBER", "COLLABORATOR"]);
 
@@ -32,6 +34,19 @@ export async function createApprovalArtifacts({
   const issueNumber = String(event.issue.number);
   const issueTitle = normalizeTitle(event.issue.title);
   const commentId = String(event.comment.id);
+  const sections = parseIssueSections(event.issue.body ?? "");
+  const aiExecutionPolicy = resolveAiExecutionPolicy(sections);
+
+  if (!aiExecutionPolicy.canCreateBranch) {
+    return {
+      approved: false,
+      issueNumber,
+      aiExecutionLevel: aiExecutionPolicy.aiExecutionLevel,
+      createPullRequest: false,
+      reason: aiExecutionPolicy.blockedReason
+    };
+  }
+
   const branch = `ai/issue-${issueNumber}-${commentId}`;
   const slug = slugify(issueTitle, `issue-${issueNumber}`);
   const designFile = `docs/design/ISSUE-${issueNumber}-${slug}.md`;
@@ -41,7 +56,6 @@ export async function createApprovalArtifacts({
   await mkdir(path.dirname(designPath), { recursive: true });
   await mkdir(path.dirname(prBodyFile), { recursive: true });
 
-  const sections = parseIssueSections(event.issue.body ?? "");
   await writeFile(
     designPath,
     buildDesignDocument({
@@ -69,6 +83,8 @@ export async function createApprovalArtifacts({
   return {
     approved: true,
     issueNumber,
+    aiExecutionLevel: aiExecutionPolicy.aiExecutionLevel,
+    createPullRequest: aiExecutionPolicy.canCreatePullRequest,
     branch,
     designFile,
     prBodyFile,

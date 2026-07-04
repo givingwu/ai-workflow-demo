@@ -16,6 +16,8 @@ await appendGitHubOutputs({
   implemented: result.implemented,
   reason: result.reason ?? "",
   issue_number: result.issueNumber ?? "",
+  ai_execution_level: result.aiExecutionLevel ?? "",
+  create_pr: result.createPullRequest ?? "",
   branch: result.branch ?? "",
   design_file: result.designFile ?? "",
   implementation_file: result.implementationFile ?? "",

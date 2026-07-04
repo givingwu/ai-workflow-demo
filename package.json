@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "start": "node src/server.js",
-    "syntax": "node --check src/server.js && node --check src/task-store.js && node --check scripts/approval-gateway.mjs && node --check scripts/check-issue-readiness.mjs && node --check scripts/design-merged-gateway.mjs && node --check scripts/generate-review-report.mjs && node --check scripts/handle-approval.mjs && node --check scripts/handle-design-merged.mjs && node --check scripts/handle-implementation.mjs && node --check scripts/implementation-gateway.mjs && node --check tests/approval-gateway.test.js && node --check tests/implementation-gateway.test.js && node --check tests/server.test.js && node --check tests/task-store.test.js",
+    "syntax": "node --check src/server.js && node --check src/task-store.js && node --check scripts/ai-execution-policy.mjs && node --check scripts/approval-gateway.mjs && node --check scripts/check-issue-readiness.mjs && node --check scripts/design-merged-gateway.mjs && node --check scripts/generate-review-report.mjs && node --check scripts/handle-approval.mjs && node --check scripts/handle-design-merged.mjs && node --check scripts/handle-implementation.mjs && node --check scripts/implementation-gateway.mjs && node --check tests/approval-gateway.test.js && node --check tests/implementation-gateway.test.js && node --check tests/server.test.js && node --check tests/task-store.test.js",
     "test": "node --test",
     "check": "npm run syntax && npm test"
   },

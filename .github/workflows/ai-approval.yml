@@ -24,6 +24,15 @@ jobs:
         id: approval
         run: node scripts/handle-approval.mjs "$GITHUB_EVENT_PATH"
 
+      - name: Comment approval skipped
+        if: steps.approval.outputs.approved != 'true' && steps.approval.outputs.reason != ''
+        env:
+          GH_TOKEN: ${{ secrets.AI_WORKFLOW_TOKEN || github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          REASON: ${{ steps.approval.outputs.reason }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "AI Approval Gateway 未执行：$REASON"
+
       - name: Configure Git
         if: steps.approval.outputs.approved == 'true'
         run: |
@@ -51,8 +60,18 @@ jobs:
             git push -u origin "$BRANCH"
           fi
 
+      - name: Comment design branch
+        if: steps.approval.outputs.approved == 'true' && steps.approval.outputs.create_pr != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.AI_WORKFLOW_TOKEN || github.token }}
+          ISSUE_NUMBER: ${{ steps.approval.outputs.issue_number }}
+          BRANCH: ${{ steps.approval.outputs.branch }}
+          AI_EXECUTION_LEVEL: ${{ steps.approval.outputs.ai_execution_level }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "AI Approval Gateway 已创建设计分支 \`$BRANCH\`。当前 AI 可执行等级为 \`$AI_EXECUTION_LEVEL\`，不会自动创建 PR。"
+
       - name: Create pull request
-        if: steps.approval.outputs.approved == 'true'
+        if: steps.approval.outputs.approved == 'true' && steps.approval.outputs.create_pr == 'true'
         env:
           GH_TOKEN: ${{ secrets.AI_WORKFLOW_TOKEN || github.token }}
           BRANCH: ${{ steps.approval.outputs.branch }}

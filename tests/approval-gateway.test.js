@@ -24,6 +24,8 @@ test("owner 回复 /ai approve 时生成设计文档和 PR 元数据", async () 
     assert.equal(result.commitMessage, "docs: add design for issue #1");
     assert.equal(result.prTitle, "[ai] Design for #1 Feature demo");
     assert.equal(result.prBodyFile, path.join(workspace, ".tmp", "issue-1-pr-body.md"));
+    assert.equal(result.aiExecutionLevel, "auto-pr");
+    assert.equal(result.createPullRequest, true);
 
     const design = await readFile(path.join(workspace, result.designFile), "utf8");
     assert.match(design, /# ISSUE-1: Feature demo/);
@@ -39,6 +41,46 @@ test("owner 回复 /ai approve 时生成设计文档和 PR 元数据", async () 
     await rm(workspace, { recursive: true, force: true });
   }
 });
+
+test("AI 可执行等级为 auto-branch 时只允许生成设计分支", async () => {
+  const workspace = await mkdtemp(path.join(tmpdir(), "ai-approval-"));
+
+  try {
+    const tempDir = path.join(workspace, ".tmp");
+    const result = await createApprovalArtifacts({
+      event: createIssueCommentEvent({ aiLevel: "auto-branch" }),
+      workspace,
+      tempDir
+    });
+
+    assert.equal(result.approved, true);
+    assert.equal(result.aiExecutionLevel, "auto-branch");
+    assert.equal(result.createPullRequest, false);
+    assert.equal(result.branch, "ai/issue-1-98765");
+    assert.equal(result.designFile, "docs/design/ISSUE-1-feature-demo.md");
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
+for (const aiLevel of ["assist", "human-only"]) {
+  test(`AI 可执行等级为 ${aiLevel} 时拒绝 approve 自动化`, async () => {
+    const workspace = await mkdtemp(path.join(tmpdir(), "ai-approval-"));
+
+    try {
+      const result = await createApprovalArtifacts({
+        event: createIssueCommentEvent({ aiLevel }),
+        workspace
+      });
+
+      assert.equal(result.approved, false);
+      assert.equal(result.aiExecutionLevel, aiLevel);
+      assert.match(result.reason, new RegExp(aiLevel));
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+    }
+  });
+}
 
 test("非 approve 评论不会生成产物", async () => {
   const workspace = await mkdtemp(path.join(tmpdir(), "ai-approval-"));
@@ -99,7 +141,7 @@ function createIssueCommentEvent(options = {}) {
         "",
         "### AI 可执行等级",
         "",
-        "auto-pr"
+        options.aiLevel ?? "auto-pr"
       ].join("\n"),
       pull_request: options.pullRequest
     },
